@@ -1,0 +1,28 @@
+# Data — never commit
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Dev override — machine-specific
+docker-compose.override.yml
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+gsheet_creds.json
+*.key
+*.pem

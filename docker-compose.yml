@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────
+#  Family Health — docker-compose.yml
+#  https://github.com/yourname/healthapp
+#
+#  QUICK START:
+#    docker compose up -d
+#    docker compose logs | grep -A 12 "FIRST BOOT"
+#    Open http://localhost:8888
+# ─────────────────────────────────────────────────────────────
+
+services:
+  web:
+    image: ghcr.io/yourname/healthapp:latest
+    container_name: healthapp
+    restart: unless-stopped
+    ports:
+      - "8888:8080"          # change left side only if 8888 is taken on your machine
+    volumes:
+      - ./data:/data         # all persistent data (DB + uploads) lives here
+    environment:
+      # ── Optional overrides ─────────────────────────────────────────────────
+      # Everything below is optional. The app works without any of these.
+      # Gemini API keys are easier to add via the Admin UI after first login.
+
+      # ADMIN_EMAIL: admin@yourfamily.com    # default: admin@family.health
+      # ADMIN_PASSWORD: your-password        # default: auto-generated (check logs)
+      # GEMINI_API_KEY: AIzaSy...            # or add via Admin → ⚙️ API Keys
+      # JWT_SECRET: change-this-in-prod      # session signing secret
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
