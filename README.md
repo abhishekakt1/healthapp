@@ -10,7 +10,7 @@ and investigations for your whole family. AI-powered extraction via Gemini.
 ```bash
 # 1. Create a folder and download the compose file
 mkdir familyhealth && cd familyhealth
-curl -O https://raw.githubusercontent.com/yourname/healthapp/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/abhishekakt1/healthapp/main/docker-compose.yml
 
 # 2. Start
 docker compose up -d

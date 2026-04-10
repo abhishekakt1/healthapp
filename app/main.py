@@ -809,7 +809,7 @@ def match_patient_to_user(patient_name: str, conn) -> int | None:
     """Fuzzy-match extracted patient name to a known user. Returns user_id or None."""
     if not patient_name or patient_name in ("Not Found", ""):
         return None
-    # Strip age/gender suffixes: "Jyoti Mishra(36Y/F)" -> "Jyoti Mishra"
+    # Strip age/gender suffixes: "John Smith(36Y/M)" -> "John Smith"
     import re as _re2
     clean_name = _re2.sub(r'[\(\[].*?[\)\]]', '', patient_name)       # remove (...)
     clean_name = _re2.sub(r'\s*[-–]\s*\d+\s*[YyMm].*', '', clean_name)  # remove - 36Y...

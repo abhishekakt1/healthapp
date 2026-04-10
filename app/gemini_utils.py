@@ -658,7 +658,7 @@ def process_health_query(user_context: str, query: str, asking_user: str = "the 
         f"Data from ANY other patient section is COMPLETELY IRRELEVANT to a personal question "
         f"and must be IGNORED. Do not cite values from other patients when answering a "
         f"personal question.\n"
-        f"If the question explicitly names someone else (e.g. \'what is Jyoti\'s TSH\'), "
+        f"If the question explicitly names someone else (e.g. \'what is John\'s TSH\'), "
         f"answer for that named person only.\n"
         f"Always cite the exact patient name, date and value you are referencing.\n"
         f"Recommend consulting a doctor for medical decisions.\n\n"

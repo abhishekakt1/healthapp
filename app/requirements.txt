@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-multipart
+jinja2
+python-jose[cryptography]
+bcrypt
+pdfplumber
+pdf2image
+Pillow
+reportlab
+opencv-python-headless
+numpy
+google-genai
+google-auth
+google-api-python-client

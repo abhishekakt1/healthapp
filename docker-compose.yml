@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────────
 #  Family Health — docker-compose.yml
-#  https://github.com/yourname/healthapp
+#  https://github.com/abhishekakt1/healthapp
 #
 #  QUICK START:
 #    docker compose up -d
@@ -10,7 +10,7 @@
 
 services:
   web:
-    image: ghcr.io/yourname/healthapp:latest
+    image: ghcr.io/abhishekakt1/healthapp:latest
     container_name: healthapp
     restart: unless-stopped
     ports:
