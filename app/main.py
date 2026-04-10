@@ -2914,5 +2914,9 @@ async def chat_query(request: Request, query: str = Form(...)):
 
 
 # ── Google Sheets sync router (add-on, no changes to existing code) ──────────
-from sheets_router import sheets_router
-app.include_router(sheets_router)
+try:
+    from sheets_router import sheets_router
+    app.include_router(sheets_router)
+    print("[startup] Google Sheets sync enabled")
+except ImportError:
+    print("[startup] sheets_router not found — Google Sheets sync disabled (optional feature)")
