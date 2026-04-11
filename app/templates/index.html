@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Health Portal — Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, #0f1923 0%, #1a2d4a 60%, #0f1923 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .card {
+            background: white; border-radius: 20px; padding: 40px;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+        }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo-icon {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, #0066ff, #00b4d8);
+            border-radius: 18px; display: inline-flex; align-items: center;
+            justify-content: center; font-size: 30px; margin-bottom: 14px;
+        }
+        h2 { font-size: 22px; font-weight: 800; color: #0f1923; margin-bottom: 4px; }
+        .sub { font-size: 13px; color: #9ca3af; }
+
+        .error-box {
+            background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 10px;
+            padding: 10px 14px; color: #be123c; font-size: 13px; font-weight: 600;
+            margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+        }
+        .field { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        input[type="email"], input[type="password"] {
+            width: 100%; padding: 13px 14px; border: 1.5px solid #e5e7eb;
+            border-radius: 10px; font-size: 15px; font-family: inherit; color: #0f1923;
+            outline: none; transition: border-color .15s; background: #f8fafc;
+        }
+        input:focus { border-color: #0066ff; background: white; }
+        .btn {
+            width: 100%; padding: 14px; background: #0066ff; color: white; border: none;
+            border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all .15s; margin-top: 4px;
+        }
+        .btn:hover { background: #0052cc; }
+        .btn:active { transform: scale(.98); }
+        .note { text-align: center; margin-top: 20px; font-size: 12px; color: #d1d5db; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <div class="logo-icon">🏥</div>
+            <h2>Family Health Portal</h2>
+            <p class="sub">Secure health records for your family</p>
+        </div>
+
+        <div id="errorBox" style="display:none" class="error-box">
+            <span>⚠️</span><span>Invalid email or password. Please try again.</span>
+        </div>
+
+        <form action="/login" method="POST" autocomplete="off">
+            <input type="text"     name="_trap"  style="display:none" tabindex="-1" autocomplete="off">
+            <input type="password" name="_ptrap" style="display:none" tabindex="-1" autocomplete="off">
+            <div class="field">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com"
+                       autocomplete="off" spellcheck="false" required>
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password"
+                       placeholder="Enter your password" autocomplete="off" required>
+            </div>
+            <button type="submit" class="btn">Sign In →</button>
+        </form>
+        <p class="note">Family Health System · All records are private</p>
+    </div>
+    <script>
+        // Show error if server redirected with ?error=invalid
+        if (new URLSearchParams(location.search).get('error') === 'invalid') {
+            document.getElementById('errorBox').style.display = 'flex';
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
+        }
+        // Defeat browser autofill on load
+        window.addEventListener('load', () => {
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+        });
+    </script>
+</body>
+</html>
