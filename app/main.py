@@ -13,11 +13,7 @@ from jose import JWTError, jwt
 from gemini_utils import extract_prescription_ai, extract_prescription_smart, process_health_query
 
 app = FastAPI(title="Family Health Record System")
-from jinja2 import Environment, FileSystemLoader
-templates = Jinja2Templates(env=Environment(
-    loader=FileSystemLoader("templates"),
-    auto_reload=True,
-))
+templates = Jinja2Templates(directory="templates")
 
 # ── Bulk-upload job store ──
 import threading as _threading
