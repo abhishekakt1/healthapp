@@ -17,7 +17,7 @@ services:
       - "8888:8080"          # change left side only if 8888 is taken on your machine
     volumes:
       - ./data:/data         # all persistent data (DB + uploads) lives here
-    environment:
+    #environment:
       # ── Optional overrides ─────────────────────────────────────────────────
       # Everything below is optional. The app works without any of these.
       # Gemini API keys are easier to add via the Admin UI after first login.

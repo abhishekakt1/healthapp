@@ -835,7 +835,7 @@ def match_patient_to_user(patient_name: str, conn) -> int | None:
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.post("/login")
@@ -865,7 +865,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
 @app.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request):
     get_user_info(request)
-    return templates.TemplateResponse("change_password.html", {"request": request})
+    return templates.TemplateResponse(request, "change_password.html")
 
 
 @app.post("/change-password")
@@ -886,7 +886,7 @@ async def change_password(request: Request, new_password: str = Form(...)):
 async def dashboard(request: Request):
     try:
         get_user_info(request)
-        return templates.TemplateResponse("dashboard.html", {"request": request})
+        return templates.TemplateResponse(request, "dashboard.html")
     except Exception:
         return RedirectResponse(url="/")
 
