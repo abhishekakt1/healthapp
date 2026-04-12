@@ -932,6 +932,16 @@ async def health_check():
     return {"status": "ok", "app": "Family Health"}
 
 
+@app.get("/api/version")
+async def get_version():
+    """Return app version and build info baked in at image build time."""
+    return {
+        "version":   os.getenv("APP_VERSION", "dev"),
+        "build":     os.getenv("APP_BUILD",   "local"),
+        "app":       "Family Health",
+    }
+
+
 @app.get("/api/settings")
 def get_settings(request: Request):
     info = get_user_info(request)

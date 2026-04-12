@@ -372,7 +372,7 @@
                 </div>
 
                 <div class="m-card" style="padding:16px;text-align:center">
-                    <div style="font-size:11px;color:var(--muted)">Family Health System · v3.0</div>
+                    <div style="font-size:11px;color:var(--muted)" id="mobileVersionStr">Family Health System</div>
                 </div>
             </div>
         </div>
@@ -553,6 +553,22 @@
 
         <!-- USERS TAB (admin only) -->
         <div id="tab-users" class="tab-content hidden space-y-6">
+
+            <!-- Version info bar -->
+            <div id="versionBar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:18px;">🏥</span>
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:#1e293b;">Family Health</div>
+                        <div style="font-size:11px;color:#64748b;" id="versionText">Loading version…</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <span id="versionBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;display:none;"></span>
+                    <span id="buildBadge"   style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;display:none;"></span>
+                </div>
+            </div>
+
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">Create New User</h2>
                 <div class="grid grid-cols-2 gap-4 mb-4">
@@ -1456,7 +1472,7 @@ function switchTab(tabId) {
         btnEl.classList.remove('border-transparent','text-gray-500');
         btnEl.classList.add('border-blue-600','text-blue-600');
     }
-    if (tabId === 'tab-users')   { if (isAdmin) { loadGeminiUsage(); loadAdminKeys(); } }
+    if (tabId === 'tab-users')   { if (isAdmin) { loadGeminiUsage(); loadAdminKeys(); loadVersionInfo(); } }
     if (tabId === 'tab-invest')  loadInvestigations();
     if (tabId === 'tab-labs')    loadMatrix();
     if (tabId === 'tab-rx')      loadPrescriptions();
@@ -4054,6 +4070,31 @@ async function baiSaveToApp() {
 </div>
 
 <script>
+// ── Version info ─────────────────────────────────────────────────────────────
+async function loadVersionInfo() {
+    try {
+        const res = await fetch('/api/version');
+        const d   = await res.json();
+        const ver   = d.version || 'dev';
+        const build = d.build   || 'local';
+
+        // Desktop admin bar
+        const vt = document.getElementById('versionText');
+        const vb = document.getElementById('versionBadge');
+        const bb = document.getElementById('buildBadge');
+        if (vt) vt.textContent = `Version ${ver}  ·  Build ${build} IST`;
+        if (vb) { vb.textContent = ver; vb.style.display = 'inline-block'; }
+        if (bb) { bb.textContent = `🔨 ${build}`; bb.style.display = 'inline-block'; }
+
+        // Mobile footer
+        const mf = document.getElementById('mobileVersionStr');
+        if (mf) mf.textContent = `Family Health · ${ver} · ${build}`;
+    } catch(e) {
+        const vt = document.getElementById('versionText');
+        if (vt) vt.textContent = 'Version info unavailable';
+    }
+}
+
 // ── Gemini API Key Management ─────────────────────────────────────────────
 function toggleKeyVisibility(inputId, btn) {
     const inp = document.getElementById(inputId);
