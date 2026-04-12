@@ -148,6 +148,36 @@ async def sync_one(user_id: int, request: Request):
         raise HTTPException(500, f"Sync error: {e}")
 
 
+# ── /sync-prescriptions ──────────────────────────────────────────────────────
+
+@sheets_router.post("/sync-prescriptions")
+async def sync_prescriptions_all(request: Request):
+    """Sync all users' prescriptions to Google Sheets."""
+    _require_admin(request)
+    try:
+        from sheets_sync import sync_prescriptions_to_sheets
+        return sync_prescriptions_to_sheets()
+    except (FileNotFoundError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Sync error: {e}")
+
+
+@sheets_router.post("/sync-prescriptions/{user_id}")
+async def sync_prescriptions_one(user_id: int, request: Request):
+    """Sync one user's prescriptions to Google Sheets."""
+    _require_admin(request)
+    try:
+        from sheets_sync import sync_prescriptions_to_sheets
+        return sync_prescriptions_to_sheets(user_id=user_id)
+    except (FileNotFoundError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Sync error: {e}")
+
+
 # ── /import/excel ────────────────────────────────────────────────────────────
 
 @sheets_router.post("/import/excel")

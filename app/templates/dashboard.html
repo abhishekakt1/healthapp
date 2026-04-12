@@ -1008,41 +1008,7 @@ async function gsSaveCfg() {
 }
 
 // ── sync ──────────────────────────────────────────────────────────────────────
-async function gsSyncAll() {
-  const btn = document.getElementById('gsSyncAllBtn');
-  btn.disabled = true; btn.innerHTML = '<span>⏳ Syncing…</span>';
-  gsToast('Pushing all lab data to Google Sheets…', 'info');
-  try {
-    const r = await fetch('/api/sheets/sync', { method:'POST' });
-    const d = await r.json();
-    if (r.ok) {
-      gsToast(`✓ Synced ${d.total_rows} rows across ${d.synced_users.length} users`, 'ok');
-      gsShowSyncResults(d);
-      const lnk = document.getElementById('gsOpenLink');
-      lnk.href = d.sheet_url; lnk.classList.remove('hidden');
-    } else {
-      gsToast('⚠ ' + (d.detail||'Sync failed — check configuration'), 'err');
-    }
-  } catch(e) { gsToast('⚠ ' + e.message, 'err'); }
-  btn.disabled = false; btn.innerHTML = '<span>↑ Sync All Users</span>';
-}
 
-async function gsSyncOne() {
-  const uid = document.getElementById('gsSyncUser').value;
-  if (!uid) { gsToast('Select a user first', 'warn'); return; }
-  gsToast('Syncing…', 'info');
-  try {
-    const r = await fetch(`/api/sheets/sync/${uid}`, { method:'POST' });
-    const d = await r.json();
-    if (r.ok) {
-      const u = d.synced_users[0] || {};
-      gsToast(`✓ Synced ${u.rows||0} rows for ${u.user||'user'}`, 'ok');
-      gsShowSyncResults(d);
-    } else {
-      gsToast('⚠ ' + (d.detail||'Sync failed'), 'err');
-    }
-  } catch(e) { gsToast('⚠ ' + e.message, 'err'); }
-}
 
 function gsShowSyncResults(d) {
   const box = document.getElementById('gsSyncResults');
@@ -2021,11 +1987,33 @@ async function deletePrescription(id) {
 async function loadUsers() {
     const res=await fetch('/api/users'); allUsers=await res.json();
     document.getElementById('userTableBody').innerHTML=allUsers.map(u=>
-        `<tr class="border-b hover:bg-gray-50">
-            <td class="p-3 font-medium">${u.full_name||'<span class="text-gray-400 italic text-sm">Not set</span>'}</td>
+        `<tr class="border-b hover:bg-gray-50" id="user-row-${u.id}">
+            <td class="p-3 font-medium">
+                <div id="name-display-${u.id}" style="display:flex;align-items:center;gap:6px;">
+                    <span>${u.full_name||'<em class="text-gray-400 text-xs">Not set</em>'}</span>
+                    <button onclick="showNameEdit(${u.id},'${(u.full_name||'').replace(/'/g,"\\'")}')"
+                        style="font-size:11px;color:#6366f1;background:none;border:none;cursor:pointer;padding:0;">✏️</button>
+                </div>
+                <div id="name-edit-${u.id}" style="display:none;gap:4px;align-items:center;flex-wrap:wrap;">
+                    <input id="name-input-${u.id}" type="text"
+                        style="border:1px solid #c7d2fe;border-radius:6px;padding:4px 8px;font-size:12px;width:130px;outline:none;">
+                    <button onclick="saveUserName(${u.id},'${(u.full_name||'').replace(/'/g,"\\'")}')"
+                        style="font-size:11px;font-weight:700;color:white;background:#4f46e5;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;">Save</button>
+                    <button onclick="cancelNameEdit(${u.id})"
+                        style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;">✕</button>
+                </div>
+                <div id="rename-files-${u.id}" style="display:none;margin-top:4px;">
+                    <button onclick="renameUserFiles(${u.id})"
+                        style="font-size:11px;color:#d97706;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600;">
+                        📁 Rename saved files too
+                    </button>
+                    <button onclick="document.getElementById('rename-files-${u.id}').style.display='none'"
+                        style="font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;margin-left:4px;">skip</button>
+                </div>
+            </td>
             <td class="p-3 text-gray-600">${u.email}</td>
             <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${u.role==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">${u.role}</span></td>
-            <td class="p-3 flex gap-3">
+            <td class="p-3 flex gap-3 flex-wrap">
                 <button onclick="resetPasswordPrompt(${u.id},'${(u.full_name||u.email).replace(/'/g,"\\'")}\')" class="text-blue-500 hover:text-blue-700 text-sm font-semibold">🔑 Reset PW</button>
                 ${u.email!=='admin@family.health'?`<button onclick="deleteUser(${u.id},'${(u.full_name||u.email).replace(/'/g,"\\'")}\')" class="text-red-400 hover:text-red-600 text-sm font-semibold">Delete</button>`:''}
             </td>
@@ -4259,6 +4247,120 @@ async function mDoBulkUpload() {
         st.style.color='#059669'; st.textContent=`✓ Uploaded — Job: ${d.job_id}`;
         rs.style.display='block'; rs.innerHTML='<p style="color:#6b7280">Processing in background…</p>';
     } else { st.style.color='#dc2626'; st.textContent='⚠️ '+(d.detail||'Failed'); }
+}
+
+// ── Google Sheets sync tab toggle ────────────────────────────────────────────
+let _gsSyncMode = 'lab'; // 'lab' or 'rx'
+
+function gsSwitchSyncTab(mode) {
+    _gsSyncMode = mode;
+    const labBtn = document.getElementById('gsSyncTabLab');
+    const rxBtn  = document.getElementById('gsSyncTabRx');
+    const active = 'padding:5px 14px;border-radius:8px;border:1.5px solid #059669;background:#059669;color:white;font-size:12px;font-weight:700;cursor:pointer;';
+    const inactive = 'padding:5px 14px;border-radius:8px;border:1.5px solid #d1d5db;background:white;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;';
+    if (mode === 'lab') { labBtn.style.cssText=active; rxBtn.style.cssText=inactive; }
+    else                { rxBtn.style.cssText=active;  labBtn.style.cssText=inactive; }
+    document.getElementById('gsSyncResults').classList.add('hidden');
+}
+
+async function gsSyncAll() {
+    const btn = document.getElementById('gsSyncAllBtn');
+    btn.disabled = true; btn.innerHTML = '<span>⏳ Syncing…</span>';
+    const url = _gsSyncMode === 'rx' ? '/api/sheets/sync-prescriptions' : '/api/sheets/sync';
+    const label = _gsSyncMode === 'rx' ? 'prescriptions' : 'lab rows';
+    gsToast(`Pushing all ${label} to Google Sheets…`, 'info');
+    try {
+        const r = await fetch(url, { method:'POST' });
+        const d = await r.json();
+        if (r.ok) {
+            gsToast(`✓ Synced ${d.total_rows} ${label} across ${d.synced_users.length} users`, 'ok');
+            gsShowSyncResults(d);
+            const lnk = document.getElementById('gsOpenLink');
+            lnk.href = d.sheet_url; lnk.classList.remove('hidden');
+        } else { gsToast('⚠ ' + (d.detail||'Sync failed — check configuration'), 'err'); }
+    } catch(e) { gsToast('⚠ ' + e.message, 'err'); }
+    btn.disabled = false; btn.innerHTML = '<span>↑ Sync All Users</span>';
+}
+
+async function gsSyncOne() {
+    const uid = document.getElementById('gsSyncUser').value;
+    if (!uid) { gsToast('Select a user first', 'warn'); return; }
+    const url = _gsSyncMode === 'rx' ? `/api/sheets/sync-prescriptions/${uid}` : `/api/sheets/sync/${uid}`;
+    gsToast('Syncing…', 'info');
+    try {
+        const r = await fetch(url, { method:'POST' });
+        const d = await r.json();
+        if (r.ok) {
+            const u = d.synced_users[0] || {};
+            gsToast(`✓ Synced ${u.rows||0} rows for ${u.user||'user'}`, 'ok');
+            gsShowSyncResults(d);
+        } else { gsToast('⚠ ' + (d.detail||'Sync failed'), 'err'); }
+    } catch(e) { gsToast('⚠ ' + e.message, 'err'); }
+}
+
+// ── User name edit ────────────────────────────────────────────────────────────
+let _pendingRename = {}; // { userId, oldName, newName }
+
+function showNameEdit(uid, currentName) {
+    document.getElementById(`name-display-${uid}`).style.display = 'none';
+    const editDiv = document.getElementById(`name-edit-${uid}`);
+    editDiv.style.display = 'flex';
+    const inp = document.getElementById(`name-input-${uid}`);
+    inp.value = currentName;
+    inp.focus();
+    inp.onkeydown = e => { if(e.key==='Enter') saveUserName(uid, currentName); if(e.key==='Escape') cancelNameEdit(uid); };
+}
+
+function cancelNameEdit(uid) {
+    document.getElementById(`name-edit-${uid}`).style.display = 'none';
+    document.getElementById(`name-display-${uid}`).style.display = 'flex';
+    document.getElementById(`rename-files-${uid}`).style.display = 'none';
+}
+
+async function saveUserName(uid, oldName) {
+    const newName = (document.getElementById(`name-input-${uid}`)?.value || '').trim();
+    if (!newName) return;
+    if (newName === oldName) { cancelNameEdit(uid); return; }
+    const res = await fetch(`/api/users/${uid}`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({full_name: newName})
+    });
+    if (!res.ok) { alert('Failed to save name'); return; }
+    // Update display
+    document.getElementById(`name-edit-${uid}`).style.display = 'none';
+    const displayDiv = document.getElementById(`name-display-${uid}`);
+    displayDiv.style.display = 'flex';
+    displayDiv.querySelector('span').textContent = newName;
+    // Store for file rename
+    _pendingRename[uid] = {oldName, newName};
+    // Show rename files button if old name existed
+    if (oldName && oldName !== newName) {
+        document.getElementById(`rename-files-${uid}`).style.display = 'block';
+    }
+    // Refresh user list and dropdowns
+    await loadUsers();
+}
+
+async function renameUserFiles(uid) {
+    const r = _pendingRename[uid];
+    if (!r) return;
+    if (!confirm(`Rename all saved files from "${r.oldName}" → "${r.newName}"?
+This renames upload folders and updates file paths in the database.`)) return;
+    const res = await fetch('/api/admin/rename-user-files', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({old_name: r.oldName, new_name: r.newName})
+    });
+    const d = await res.json();
+    if (res.ok) {
+        alert(`✓ Renamed ${d.renamed_files} file path(s) in database.
+Folder: ${d.old_dir} → ${d.new_dir}`);
+        document.getElementById(`rename-files-${uid}`).style.display = 'none';
+        delete _pendingRename[uid];
+    } else {
+        alert('⚠ ' + (d.detail || 'Rename failed'));
+    }
 }
 
 // ── Quick Edit (admin) ────────────────────────────────────────────────────

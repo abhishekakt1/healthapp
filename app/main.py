@@ -781,6 +781,39 @@ def init_db():
 init_db()
 
 
+def _maybe_show_credentials_banner():
+    """Print login credentials to logs if admin still has default password."""
+    env_pass = os.getenv("ADMIN_PASSWORD", "").strip()
+    if env_pass:
+        return  # user set their own password via env — don't echo it
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Check if any admin still has must_change_password=1
+    c.execute("""SELECT email FROM users 
+                 WHERE role='admin' AND must_change_password=1 
+                 ORDER BY id LIMIT 1""")
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return  # password already changed — stay silent
+    # Admin hasn't changed password yet — remind them on every startup
+    # We can't recover the plaintext password from the hash, so just remind
+    # them to check the FIRST BOOT log or restart with a fresh data/ folder
+    print("""
+╔══════════════════════════════════════════════════╗
+║        FAMILY HEALTH — PASSWORD NOT SET          ║
+║                                                  ║
+║  Admin password has not been changed yet.        ║
+║  Check your FIRST BOOT log for the password, or  ║
+║  set ADMIN_PASSWORD in docker-compose.yml to     ║
+║  reset it to a known value.                      ║
+║                                                  ║
+║  Email: admin@family.health                      ║
+╚══════════════════════════════════════════════════╝""")
+
+_maybe_show_credentials_banner()
+
+
 # ── AUTH ──────────────────────────────────────────────────────────────────────
 
 def get_user_info(request: Request) -> dict:
@@ -2055,6 +2088,78 @@ async def create_user(request: Request, full_name: str = Form(...), email: str =
         raise HTTPException(status_code=400, detail="Email already exists")
     conn.close()
     return {"message": f"User {full_name} created"}
+
+
+@app.patch("/api/users/{user_id}")
+async def update_user(user_id: int, request: Request):
+    """Admin: update a user's full_name and/or email."""
+    require_admin(request)
+    body = await request.json()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT full_name, email FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    old_name = row[0] or ""
+    new_name = body.get("full_name", old_name).strip()
+    new_email = body.get("email", row[1]).strip()
+    c.execute("UPDATE users SET full_name=?, email=? WHERE id=?",
+              (new_name, new_email, user_id))
+    conn.commit(); conn.close()
+    return {"ok": True, "old_name": old_name, "new_name": new_name}
+
+
+@app.post("/api/admin/rename-user-files")
+async def rename_user_files(request: Request):
+    """Admin: rename upload folders when a user's name changes."""
+    require_admin(request)
+    body = await request.json()
+    old_name = (body.get("old_name") or "").strip()
+    new_name = (body.get("new_name") or "").strip()
+    if not old_name or not new_name or old_name == new_name:
+        raise HTTPException(status_code=400, detail="old_name and new_name required and must differ")
+
+    import re as _re
+    def _safe(n): return _re.sub(r"[^a-zA-Z0-9]", "_", n.strip().lower())
+
+    old_dir = os.path.join(UPLOAD_BASE, _safe(old_name))
+    new_dir = os.path.join(UPLOAD_BASE, _safe(new_name))
+
+    renamed_files = 0
+    if os.path.exists(old_dir):
+        if os.path.exists(new_dir):
+            raise HTTPException(status_code=409,
+                detail=f"Target folder already exists: {new_dir}")
+        import shutil
+        shutil.move(old_dir, new_dir)
+        print(f"[rename-files] {old_dir} → {new_dir}")
+
+    # Update file_path in documents table
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    old_slug = _safe(old_name)
+    new_slug = _safe(new_name)
+    c.execute("SELECT id, file_path FROM documents WHERE file_path LIKE ?",
+              (f"%/{old_slug}/%",))
+    docs = c.fetchall()
+    for doc_id, fp in docs:
+        if fp:
+            new_fp = fp.replace(f"/{old_slug}/", f"/{new_slug}/")
+            c.execute("UPDATE documents SET file_path=? WHERE id=?", (new_fp, doc_id))
+            renamed_files += 1
+    # Same for investigations
+    c.execute("SELECT id, file_path FROM investigations WHERE file_path LIKE ?",
+              (f"%/{old_slug}/%",))
+    for inv_id, fp in c.fetchall():
+        if fp:
+            new_fp = fp.replace(f"/{old_slug}/", f"/{new_slug}/")
+            c.execute("UPDATE investigations SET file_path=? WHERE id=?", (new_fp, inv_id))
+            renamed_files += 1
+    conn.commit(); conn.close()
+    return {"ok": True, "renamed_files": renamed_files,
+            "old_dir": old_dir, "new_dir": new_dir}
 
 
 @app.delete("/api/users/{user_id}")

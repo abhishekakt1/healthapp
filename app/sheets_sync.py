@@ -340,6 +340,91 @@ def sync_to_sheets(user_id: Optional[int] = None) -> dict:
     }
 
 
+def sync_prescriptions_to_sheets(user_id=None) -> dict:
+    """
+    Push prescriptions → Google Sheets.
+    Each user gets a tab named "NAME - Prescriptions".
+    Each prescription = one row: Date | Doctor | Patient | Diagnosis |
+    Chief Complaint | Medicines | Investigations | Advice | Follow-up | Notes
+    """
+    svc, sheet_id = _build_service()
+    conn = sqlite3.connect(DB_PATH)
+    c    = conn.cursor()
+
+    if user_id:
+        c.execute("SELECT id, full_name, email FROM users WHERE id=?", (user_id,))
+    else:
+        c.execute("SELECT id, full_name, email FROM users ORDER BY full_name")
+    users = c.fetchall()
+
+    tabs   = _existing_tabs(svc, sheet_id)
+    synced = []
+    total  = 0
+
+    HEADER = ["Date", "Doctor", "Patient", "Diagnosis", "Chief Complaint",
+              "Medicines", "Investigations Advised", "Advice", "Follow-Up", "Notes"]
+
+    for uid, full_name, email in users:
+        name      = (full_name or email.split("@")[0]).strip()
+        tab_title = f"{name[:70]} - Prescriptions"
+
+        c.execute("""SELECT p.date, p.doctor, p.data
+                     FROM prescriptions p
+                     WHERE p.user_id=?
+                     ORDER BY p.date DESC""", (uid,))
+        rows_db = c.fetchall()
+
+        if not rows_db:
+            _ensure_tab(svc, sheet_id, tab_title, tabs)
+            _write_tab(svc, sheet_id, tab_title,
+                       [HEADER, [f"No prescriptions yet for {name}"]])
+            synced.append({"user": name, "rows": 0})
+            continue
+
+        sheet_rows = [HEADER]
+        for date, doctor, data_json in rows_db:
+            try:
+                d = json.loads(data_json or "{}")
+            except Exception:
+                d = {}
+            # Medicines: "DrugName Dose Freq Duration | DrugName ..."
+            meds = d.get("Medicines") or []
+            meds_str = " | ".join(
+                " ".join(filter(None, [
+                    m.get("Name",""), m.get("Dosage",""),
+                    m.get("Frequency",""), m.get("Duration","")
+                ])) for m in meds if m.get("Name")
+            )
+            invs_str  = ", ".join(d.get("Investigations") or [])
+            advice_str = " | ".join(d.get("Advice") or [])
+            sheet_rows.append([
+                date or "",
+                doctor or d.get("Doctor_Name","") or "",
+                d.get("Patient_Name","") or name,
+                d.get("Diagnosis","") or "",
+                d.get("Chief_Complaint","") or "",
+                meds_str,
+                invs_str,
+                advice_str,
+                d.get("Follow_Up","") or "",
+                d.get("Notes","") or "",
+            ])
+
+        _ensure_tab(svc, sheet_id, tab_title, tabs)
+        _write_tab(svc, sheet_id, tab_title, sheet_rows)
+        rx_count = len(sheet_rows) - 1
+        total += rx_count
+        synced.append({"user": name, "rows": rx_count})
+        print(f"[sheets_sync] ✓  {name}: {rx_count} prescriptions")
+
+    conn.close()
+    return {
+        "synced_users": synced,
+        "total_rows":   total,
+        "sheet_url":    f"https://docs.google.com/spreadsheets/d/{sheet_id}",
+    }
+
+
 # ── import helpers ────────────────────────────────────────────────────────────
 
 def _map_columns(header_cells: list[str]) -> dict[str, int]:
